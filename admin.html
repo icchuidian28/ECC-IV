@@ -23,10 +23,15 @@
             <h2 class="text-xl font-semibold mb-4">Issue Ticket</h2>
             <div class="grid grid-cols-2 gap-4">
                 <template x-for="cat in categories" :key="cat.id">
+                    <!-- Updated Button: Now shows the last issued number -->
                     <button @click="issueTicket(cat.id)" 
-                            class="p-4 border-2 rounded-lg font-medium hover:bg-gray-50 transition"
+                            class="p-4 border-2 rounded-lg font-medium hover:bg-gray-50 transition flex flex-col items-center justify-center"
                             :class="cat.color">
-                        <span x-text="cat.name"></span>
+                        <span class="text-lg tracking-wide" x-text="cat.name"></span>
+                        <div class="mt-2 flex flex-col items-center">
+                            <span class="text-xs text-gray-500 uppercase tracking-wider">Last Issued</span>
+                            <span class="text-3xl font-black tabular-nums mt-1" x-text="formatNumber(cat.prefix, cat.latestIssued)"></span>
+                        </div>
                     </button>
                 </template>
             </div>
@@ -38,11 +43,14 @@
             <div class="space-y-4">
                 <template x-for="cat in categories" :key="cat.id">
                     <div class="flex justify-between items-center p-4 bg-gray-50 rounded border">
-                        <span class="font-medium text-gray-700" x-text="cat.name"></span>
+                        <div class="flex flex-col">
+                            <span class="font-medium text-gray-700 uppercase" x-text="cat.name"></span>
+                            <span class="text-xs text-gray-500">Waiting: <span x-text="getWaitingCount(cat)"></span></span>
+                        </div>
                         <div class="flex items-center gap-4">
-                            <span class="text-2xl font-bold" x-text="formatNumber(cat.prefix, cat.current)"></span>
+                            <span class="text-3xl font-bold tabular-nums" x-text="formatNumber(cat.prefix, cat.current)"></span>
                             <button @click="callNext(cat.id)" 
-                                    class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">
+                                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-semibold shadow">
                                 Call Next
                             </button>
                         </div>
@@ -115,7 +123,15 @@ document.addEventListener('alpine:init', () => {
 
         formatNumber(prefix, num) {
             if (num === 0) return '---';
-            return `${num}`; // Prefix completely removed
+            return `${num}`; 
+        },
+
+        // Added this so the admin can also see how many people are waiting
+        getWaitingCount(cat) {
+            if (cat.current === cat.latestIssued) return 0;
+            let diff = cat.latestIssued - cat.current;
+            if (diff < 0) diff += this.maxNumber; 
+            return diff;
         }
     }))
 })
