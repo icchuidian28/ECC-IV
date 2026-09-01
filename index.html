@@ -105,7 +105,7 @@ document.addEventListener('alpine:init', () => {
 
         formatNumber(prefix, num) {
             if (num === 0) return '---';
-            return `${prefix}-${num}`; // <-- Padding removed here
+            return `${num}`; // Prefix completely removed
         },
 
         getWaitingCount(cat) {
