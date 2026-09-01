@@ -23,37 +23,53 @@
             <h2 class="text-xl font-semibold mb-4">Issue Ticket</h2>
             <div class="grid grid-cols-2 gap-4">
                 <template x-for="cat in categories" :key="cat.id">
-                    <!-- Updated Button: Now shows the last issued number -->
                     <button @click="issueTicket(cat.id)" 
                             class="p-4 border-2 rounded-lg font-medium hover:bg-gray-50 transition flex flex-col items-center justify-center"
                             :class="cat.color">
                         <span class="text-lg tracking-wide" x-text="cat.name"></span>
                         <div class="mt-2 flex flex-col items-center">
                             <span class="text-xs text-gray-500 uppercase tracking-wider">Last Issued</span>
-                            <span class="text-3xl font-black tabular-nums mt-1" x-text="formatNumber(cat.prefix, cat.latestIssued)"></span>
+                            <span class="text-3xl font-black tabular-nums mt-1" x-text="formatNumber(cat.latestIssued)"></span>
                         </div>
                     </button>
                 </template>
             </div>
         </div>
 
-        <!-- Current Serving Monitor -->
+        <!-- Current Serving & Waiting Pool -->
         <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-xl font-semibold mb-4">Call Next</h2>
+            <h2 class="text-xl font-semibold mb-4">Call Next / Skip Line</h2>
             <div class="space-y-4">
                 <template x-for="cat in categories" :key="cat.id">
-                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded border">
-                        <div class="flex flex-col">
-                            <span class="font-medium text-gray-700 uppercase" x-text="cat.name"></span>
-                            <span class="text-xs text-gray-500">Waiting: <span x-text="getWaitingCount(cat)"></span></span>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <span class="text-3xl font-bold tabular-nums" x-text="formatNumber(cat.prefix, cat.current)"></span>
+                    <div class="p-4 bg-gray-50 rounded border flex flex-col gap-3">
+                        
+                        <!-- Top Row: Info & Standard Call -->
+                        <div class="flex justify-between items-center border-b pb-3">
+                            <div class="flex flex-col">
+                                <span class="font-medium text-gray-700 uppercase" x-text="cat.name"></span>
+                                <span class="text-xs text-gray-500">Serving: <span class="font-bold text-black" x-text="formatNumber(cat.currentServing)"></span></span>
+                            </div>
                             <button @click="callNext(cat.id)" 
                                     class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-semibold shadow">
                                 Call Next
                             </button>
                         </div>
+
+                        <!-- Bottom Row: The Waiting Pool (Chips) -->
+                        <div class="flex flex-col gap-1">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Waiting List (<span x-text="cat.waitingList.length"></span>)</span>
+                            <div class="flex flex-wrap gap-2">
+                                <span x-show="cat.waitingList.length === 0" class="text-sm text-gray-400 italic">Queue is empty</span>
+                                <template x-for="num in cat.waitingList" :key="num">
+                                    <button @click="callSpecificNumber(cat.id, num)" 
+                                            class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-blue-500 hover:text-white transition font-semibold text-sm shadow-sm"
+                                            title="Click to call out of order"
+                                            x-text="num">
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
                     </div>
                 </template>
             </div>
@@ -70,20 +86,26 @@ document.addEventListener('alpine:init', () => {
         init() {
             const today = new Date().toDateString(); 
             const storedDate = localStorage.getItem('ecc_queue_date');
+            const savedQueue = localStorage.getItem('ecc_queue_data');
 
-            if (storedDate !== today) {
+            // Upgrade check: If old data structure exists (no waitingList array), force reset
+            let isOldFormat = false;
+            if (savedQueue) {
+                let parsed = JSON.parse(savedQueue);
+                if (parsed.length > 0 && typeof parsed[0].waitingList === 'undefined') isOldFormat = true;
+            }
+
+            if (storedDate !== today || isOldFormat) {
                 this.resetToDefaults();
                 localStorage.setItem('ecc_queue_date', today);
+            } else if (savedQueue) {
+                this.categories = JSON.parse(savedQueue);
             } else {
-                const savedQueue = localStorage.getItem('ecc_queue_data');
-                if (savedQueue) this.categories = JSON.parse(savedQueue);
-                else this.resetToDefaults();
+                this.resetToDefaults();
             }
 
             window.addEventListener('storage', (e) => {
-                if (e.key === 'ecc_queue_data') {
-                    this.categories = JSON.parse(e.newValue);
-                }
+                if (e.key === 'ecc_queue_data') this.categories = JSON.parse(e.newValue);
             });
         },
 
@@ -93,10 +115,10 @@ document.addEventListener('alpine:init', () => {
 
         resetToDefaults() {
             this.categories = [
-                { id: 'regular', name: 'Regular', prefix: 'R', color: 'border-blue-500 text-blue-700', current: 0, latestIssued: 0 },
-                { id: 'priority', name: 'Priority', prefix: 'P', color: 'border-red-500 text-red-700', current: 0, latestIssued: 0 },
-                { id: 'pickup', name: 'Pickup', prefix: 'U', color: 'border-green-500 text-green-700', current: 0, latestIssued: 0 },
-                { id: 'multiple', name: 'Multiple', prefix: 'M', color: 'border-purple-500 text-purple-700', current: 0, latestIssued: 0 }
+                { id: 'regular', name: 'Regular', prefix: 'R', color: 'border-blue-500 text-blue-700', currentServing: 0, latestIssued: 0, waitingList: [] },
+                { id: 'priority', name: 'Priority', prefix: 'P', color: 'border-red-500 text-red-700', currentServing: 0, latestIssued: 0, waitingList: [] },
+                { id: 'pickup', name: 'Pickup', prefix: 'U', color: 'border-green-500 text-green-700', currentServing: 0, latestIssued: 0, waitingList: [] },
+                { id: 'multiple', name: 'Multiple', prefix: 'M', color: 'border-purple-500 text-purple-700', currentServing: 0, latestIssued: 0, waitingList: [] }
             ];
             this.saveState();
         },
@@ -104,34 +126,40 @@ document.addEventListener('alpine:init', () => {
         issueTicket(id) {
             let cat = this.categories.find(c => c.id === id);
             cat.latestIssued = cat.latestIssued >= this.maxNumber ? 1 : cat.latestIssued + 1;
+            cat.waitingList.push(cat.latestIssued); // Add to the pending queue
             this.saveState(); 
         },
 
+        // Normal FIFO call
         callNext(id) {
             let cat = this.categories.find(c => c.id === id);
-            if (cat.current === cat.latestIssued) {
-                alert('No more tickets in this queue.');
+            if (cat.waitingList.length === 0) {
+                alert('No tickets waiting in this queue.');
                 return;
             }
-            cat.current = cat.current >= this.maxNumber ? 1 : cat.current + 1;
+            let nextNum = cat.waitingList.shift(); // Remove the oldest from the array
+            cat.currentServing = nextNum;
             this.saveState(); 
+        },
+
+        // Manual Out-Of-Order call
+        callSpecificNumber(catId, num) {
+            if(confirm(`Call number ${num} out of order?`)) {
+                let cat = this.categories.find(c => c.id === catId);
+                // Remove the specific number from the waiting pool
+                cat.waitingList = cat.waitingList.filter(n => n !== num);
+                cat.currentServing = num;
+                this.saveState();
+            }
         },
 
         resetQueue() {
             if(confirm('Reset today\'s queue to 0?')) this.resetToDefaults();
         },
 
-        formatNumber(prefix, num) {
+        formatNumber(num) {
             if (num === 0) return '---';
             return `${num}`; 
-        },
-
-        // Added this so the admin can also see how many people are waiting
-        getWaitingCount(cat) {
-            if (cat.current === cat.latestIssued) return 0;
-            let diff = cat.latestIssued - cat.current;
-            if (diff < 0) diff += this.maxNumber; 
-            return diff;
         }
     }))
 })
