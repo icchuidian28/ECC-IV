@@ -7,10 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<!-- Added @click to the body so clicking anywhere unlocks the audio -->
 <body class="bg-gray-900 h-screen flex flex-col" x-data="displayQueue()" @click="unlockAudio()">
 
-<!-- Subtle audio reminder that disappears after the first click -->
 <div x-show="!audioUnlocked" class="bg-red-500 text-white text-sm text-center py-1 font-semibold">
     Sound is paused. Click anywhere on this screen to enable the notification chime.
 </div>
@@ -20,22 +18,18 @@
         <h1 class="text-5xl font-bold text-white tracking-wider uppercase">Now Serving</h1>
     </div>
 
-    <!-- Grid for large display -->
     <div class="grid grid-cols-2 gap-8 flex-1">
         <template x-for="cat in categories" :key="cat.id">
             <div class="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border-4" :class="cat.color">
                 
-                <!-- Category Title -->
                 <div class="py-4 text-center border-b border-gray-200" :class="'bg-' + cat.color.split('-')[1] + '-50'">
                     <h2 class="text-4xl font-bold uppercase tracking-wide" x-text="cat.name"></h2>
                 </div>
                 
-                <!-- Main Now Serving Number -->
                 <div class="flex-1 flex items-center justify-center bg-gray-50 py-8">
                     <span class="text-8xl font-black tabular-nums tracking-tighter" x-text="formatNumber(cat.prefix, cat.current)"></span>
                 </div>
 
-                <!-- NEW: Small area for Queue Details -->
                 <div class="bg-gray-200 py-3 px-6 flex justify-between items-center text-gray-700 font-semibold text-2xl border-t-2 border-gray-300">
                     <div>
                         <span class="text-sm text-gray-500 uppercase tracking-wide block">Waiting</span>
@@ -58,14 +52,12 @@ document.addEventListener('alpine:init', () => {
         categories: [],
         audioUnlocked: false,
         audioCtx: null,
-        maxNumber: 999, // Must match the admin's maxNumber
+        maxNumber: 999, 
 
         init() {
-            // Load initial state
             const savedQueue = localStorage.getItem('ecc_queue_data');
             if (savedQueue) this.categories = JSON.parse(savedQueue);
 
-            // Listen for changes from the Admin tab
             window.addEventListener('storage', (e) => {
                 if (e.key === 'ecc_queue_data') {
                     const newData = JSON.parse(e.newValue);
@@ -76,7 +68,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         unlockAudio() {
-            if (this.audioUnlocked) return; // Prevent unlocking multiple times
+            if (this.audioUnlocked) return; 
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             this.audioUnlocked = true;
         },
@@ -102,7 +94,7 @@ document.addEventListener('alpine:init', () => {
             gainNode.connect(this.audioCtx.destination);
 
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, this.audioCtx.currentTime); // A5 note
+            oscillator.frequency.setValueAtTime(880, this.audioCtx.currentTime); 
 
             gainNode.gain.setValueAtTime(1, this.audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.5);
@@ -113,22 +105,20 @@ document.addEventListener('alpine:init', () => {
 
         formatNumber(prefix, num) {
             if (num === 0) return '---';
-            return `${prefix}-${String(num).padStart(3, '0')}`;
+            return `${prefix}-${num}`; // <-- Padding removed here
         },
 
-        // Calculates how many people are in line based on issued vs current
         getWaitingCount(cat) {
             if (cat.current === cat.latestIssued) return 0;
             let diff = cat.latestIssued - cat.current;
-            if (diff < 0) diff += this.maxNumber; // Handles circular wrap-around
+            if (diff < 0) diff += this.maxNumber; 
             return diff;
         },
 
-        // Determines the exact ticket number of the next person
         getNextNumber(cat) {
             if (this.getWaitingCount(cat) === 0) return '---';
             let nextNum = cat.current + 1;
-            if (nextNum > this.maxNumber) nextNum = 1; // Handles circular wrap-around
+            if (nextNum > this.maxNumber) nextNum = 1; 
             return this.formatNumber(cat.prefix, nextNum);
         }
     }))
