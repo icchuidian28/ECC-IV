@@ -26,14 +26,15 @@
                     <h2 class="text-4xl font-bold uppercase tracking-wide" x-text="cat.name"></h2>
                 </div>
                 
+                <!-- Displays currentServing instead of current -->
                 <div class="flex-1 flex items-center justify-center bg-gray-50 py-8">
-                    <span class="text-8xl font-black tabular-nums tracking-tighter" x-text="formatNumber(cat.prefix, cat.current)"></span>
+                    <span class="text-8xl font-black tabular-nums tracking-tighter" x-text="formatNumber(cat.currentServing)"></span>
                 </div>
 
                 <div class="bg-gray-200 py-3 px-6 flex justify-between items-center text-gray-700 font-semibold text-2xl border-t-2 border-gray-300">
                     <div>
                         <span class="text-sm text-gray-500 uppercase tracking-wide block">Waiting</span>
-                        <span x-text="getWaitingCount(cat)"></span>
+                        <span x-text="cat.waitingList.length"></span>
                     </div>
                     <div class="text-right">
                         <span class="text-sm text-gray-500 uppercase tracking-wide block">Next in Line</span>
@@ -56,7 +57,16 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             const savedQueue = localStorage.getItem('ecc_queue_data');
-            if (savedQueue) this.categories = JSON.parse(savedQueue);
+            
+            // Safety check for old versions
+            if (savedQueue) {
+                let parsed = JSON.parse(savedQueue);
+                if (parsed.length > 0 && typeof parsed[0].waitingList === 'undefined') {
+                    // Waiting for admin to overwrite data
+                } else {
+                    this.categories = parsed;
+                }
+            }
 
             window.addEventListener('storage', (e) => {
                 if (e.key === 'ecc_queue_data') {
@@ -76,7 +86,7 @@ document.addEventListener('alpine:init', () => {
         checkForChangesAndDing(newData) {
             let changed = false;
             newData.forEach((newCat, index) => {
-                if (this.categories[index] && this.categories[index].current !== newCat.current) {
+                if (this.categories[index] && this.categories[index].currentServing !== newCat.currentServing) {
                     changed = true;
                 }
             });
@@ -103,23 +113,15 @@ document.addEventListener('alpine:init', () => {
             oscillator.stop(this.audioCtx.currentTime + 0.5);
         },
 
-        formatNumber(prefix, num) {
+        formatNumber(num) {
             if (num === 0) return '---';
-            return `${num}`; // Prefix completely removed
+            return `${num}`; 
         },
 
-        getWaitingCount(cat) {
-            if (cat.current === cat.latestIssued) return 0;
-            let diff = cat.latestIssued - cat.current;
-            if (diff < 0) diff += this.maxNumber; 
-            return diff;
-        },
-
+        // Next in line is always the first index of the waiting array
         getNextNumber(cat) {
-            if (this.getWaitingCount(cat) === 0) return '---';
-            let nextNum = cat.current + 1;
-            if (nextNum > this.maxNumber) nextNum = 1; 
-            return this.formatNumber(cat.prefix, nextNum);
+            if (cat.waitingList.length === 0) return '---';
+            return this.formatNumber(cat.waitingList[0]);
         }
     }))
 })
