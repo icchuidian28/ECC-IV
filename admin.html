@@ -45,9 +45,15 @@
                         
                         <!-- Top Row: Info & Standard Call -->
                         <div class="flex justify-between items-center border-b pb-3">
-                            <div class="flex flex-col">
-                                <span class="font-medium text-gray-700 uppercase" x-text="cat.name"></span>
-                                <span class="text-xs text-gray-500">Serving: <span class="font-bold text-black" x-text="formatNumber(cat.currentServing)"></span></span>
+                            <div class="flex flex-col gap-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium text-gray-700 uppercase" x-text="cat.name"></span>
+                                    <!-- Individual Category Reset Button -->
+                                    <button @click="resetCategory(cat.id)" class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded hover:bg-red-200 transition font-bold uppercase tracking-wider">
+                                        Reset
+                                    </button>
+                                </div>
+                                <span class="text-xs text-gray-500">Serving: <span class="font-bold text-black text-sm" x-text="formatNumber(cat.currentServing)"></span></span>
                             </div>
                             <button @click="callNext(cat.id)" 
                                     class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-semibold shadow">
@@ -88,7 +94,6 @@ document.addEventListener('alpine:init', () => {
             const storedDate = localStorage.getItem('ecc_queue_date');
             const savedQueue = localStorage.getItem('ecc_queue_data');
 
-            // Upgrade check: If old data structure exists (no waitingList array), force reset
             let isOldFormat = false;
             if (savedQueue) {
                 let parsed = JSON.parse(savedQueue);
@@ -126,27 +131,24 @@ document.addEventListener('alpine:init', () => {
         issueTicket(id) {
             let cat = this.categories.find(c => c.id === id);
             cat.latestIssued = cat.latestIssued >= this.maxNumber ? 1 : cat.latestIssued + 1;
-            cat.waitingList.push(cat.latestIssued); // Add to the pending queue
+            cat.waitingList.push(cat.latestIssued); 
             this.saveState(); 
         },
 
-        // Normal FIFO call
         callNext(id) {
             let cat = this.categories.find(c => c.id === id);
             if (cat.waitingList.length === 0) {
                 alert('No tickets waiting in this queue.');
                 return;
             }
-            let nextNum = cat.waitingList.shift(); // Remove the oldest from the array
+            let nextNum = cat.waitingList.shift(); 
             cat.currentServing = nextNum;
             this.saveState(); 
         },
 
-        // Manual Out-Of-Order call
         callSpecificNumber(catId, num) {
             if(confirm(`Call number ${num} out of order?`)) {
                 let cat = this.categories.find(c => c.id === catId);
-                // Remove the specific number from the waiting pool
                 cat.waitingList = cat.waitingList.filter(n => n !== num);
                 cat.currentServing = num;
                 this.saveState();
@@ -154,7 +156,18 @@ document.addEventListener('alpine:init', () => {
         },
 
         resetQueue() {
-            if(confirm('Reset today\'s queue to 0?')) this.resetToDefaults();
+            if(confirm('Reset all queues to 0?')) this.resetToDefaults();
+        },
+
+        // New function to reset only a specific category
+        resetCategory(catId) {
+            let cat = this.categories.find(c => c.id === catId);
+            if(confirm(`Are you sure you want to reset the ${cat.name} queue to 0?`)) {
+                cat.currentServing = 0;
+                cat.latestIssued = 0;
+                cat.waitingList = [];
+                this.saveState();
+            }
         },
 
         formatNumber(num) {
