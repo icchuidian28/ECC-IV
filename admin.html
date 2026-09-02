@@ -84,9 +84,15 @@
                                 <div class="flex flex-wrap gap-2">
                                     <span x-show="cat.waitingList.length === 0" class="text-sm text-gray-400 italic">Queue is empty</span>
                                     <template x-for="num in cat.waitingList" :key="'w-'+num">
-                                        <button @click="callSpecificNumber(cat.id, num)" 
-                                                class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-blue-500 hover:text-white transition font-semibold text-sm shadow-sm text-gray-700"
-                                                title="Call out of order" x-text="num"></button>
+                                        <!-- Split Button: Call (left) / Remove (right) -->
+                                        <div class="inline-flex rounded-md shadow-sm">
+                                            <button @click="callSpecificNumber(cat.id, num)" 
+                                                    class="px-3 py-1 bg-white border border-gray-300 rounded-l-md hover:bg-blue-500 hover:text-white transition font-semibold text-sm text-gray-700 focus:z-10"
+                                                    title="Call out of order" x-text="num"></button>
+                                            <button @click="removeWaiting(cat.id, num)" 
+                                                    class="-ml-px px-2 py-1 bg-gray-50 border border-gray-300 rounded-r-md hover:bg-red-500 hover:text-white transition text-xs text-red-500 font-bold focus:z-10"
+                                                    title="Remove number">✕</button>
+                                        </div>
                                     </template>
                                 </div>
                             </div>
@@ -96,9 +102,15 @@
                                 <span class="text-[10px] font-bold text-red-500 uppercase tracking-wide">Skipped / Recall</span>
                                 <div class="flex flex-wrap gap-2">
                                     <template x-for="num in cat.skippedList" :key="'s-'+num">
-                                        <button @click="callSkipped(cat.id, num)" 
-                                                class="px-3 py-1 bg-red-50 border border-red-300 text-red-700 rounded hover:bg-red-500 hover:text-white transition font-semibold text-sm shadow-sm"
-                                                title="Recall skipped number" x-text="num"></button>
+                                        <!-- Split Button: Recall (left) / Remove (right) -->
+                                        <div class="inline-flex rounded-md shadow-sm">
+                                            <button @click="callSkipped(cat.id, num)" 
+                                                    class="px-3 py-1 bg-red-50 border border-red-300 text-red-700 rounded-l-md hover:bg-red-500 hover:text-white transition font-semibold text-sm focus:z-10"
+                                                    title="Recall skipped number" x-text="num"></button>
+                                            <button @click="removeSkipped(cat.id, num)" 
+                                                    class="-ml-px px-2 py-1 bg-red-100 border border-red-300 rounded-r-md hover:bg-red-600 hover:text-white transition text-xs text-red-600 font-bold focus:z-10"
+                                                    title="Remove number">✕</button>
+                                        </div>
                                     </template>
                                 </div>
                             </div>
@@ -125,7 +137,6 @@ document.addEventListener('alpine:init', () => {
             let isOldFormat = false;
             if (savedQueue) {
                 let parsed = JSON.parse(savedQueue);
-                // Force reset to apply the new color class names
                 if (parsed.length > 0 && typeof parsed[0].borderClass === 'undefined') isOldFormat = true;
             }
 
@@ -148,7 +159,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         resetToDefaults() {
-            // Updated with specific Hex and Tailwind Colors
             this.categories = [
                 { id: 'regular', name: 'Regular', prefix: 'R', borderClass: 'border-[#800000]', textClass: 'text-[#800000]', bgLightClass: 'bg-[#800000]/10', currentServing: 0, latestIssued: 0, waitingList: [], skippedList: [] },
                 { id: 'priority', name: 'Priority', prefix: 'P', borderClass: 'border-sky-500', textClass: 'text-sky-700', bgLightClass: 'bg-sky-50', currentServing: 0, latestIssued: 0, waitingList: [], skippedList: [] },
@@ -213,6 +223,24 @@ document.addEventListener('alpine:init', () => {
                 let cat = this.categories.find(c => c.id === catId);
                 cat.skippedList = cat.skippedList.filter(n => n !== num);
                 cat.currentServing = num;
+                this.saveState();
+            }
+        },
+
+        // NEW: Remove a number entirely from the waiting list
+        removeWaiting(catId, num) {
+            if(confirm(`Remove number ${num} completely from the waiting list?`)) {
+                let cat = this.categories.find(c => c.id === catId);
+                cat.waitingList = cat.waitingList.filter(n => n !== num);
+                this.saveState();
+            }
+        },
+
+        // NEW: Remove a number entirely from the skipped list
+        removeSkipped(catId, num) {
+            if(confirm(`Remove number ${num} completely from the skipped list?`)) {
+                let cat = this.categories.find(c => c.id === catId);
+                cat.skippedList = cat.skippedList.filter(n => n !== num);
                 this.saveState();
             }
         },
