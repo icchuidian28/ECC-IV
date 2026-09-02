@@ -23,16 +23,17 @@
         
         <!-- MAIN HIGHLIGHT (Recently Called) -->
         <template x-if="activeCat">
-            <div class="w-2/3 bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-8 transition-colors duration-500" :class="activeCat.color">
+            <div class="w-2/3 bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-8 transition-colors duration-500" :class="activeCat.borderClass">
                 
-                <div class="py-8 text-center border-b border-gray-200 transition-colors duration-500" :class="'bg-' + activeCat.color.split('-')[1] + '-50'">
+                <div class="py-8 text-center border-b border-gray-200 transition-colors duration-500" :class="activeCat.bgLightClass">
                     <span class="text-xl font-bold text-gray-500 uppercase tracking-widest block mb-2">Please Proceed To Claim</span>
-                    <h2 class="text-7xl font-black uppercase tracking-wide" x-text="activeCat.name"></h2>
+                    <!-- Uses the custom text color applied to the category -->
+                    <h2 class="text-7xl font-black uppercase tracking-wide" :class="activeCat.textClass" x-text="activeCat.name"></h2>
                 </div>
                 
                 <div class="flex-1 flex items-center justify-center bg-gray-50 py-8">
                     <!-- Massive Number Display -->
-                    <span class="text-[14rem] font-black tabular-nums tracking-tighter leading-none drop-shadow-lg" x-text="formatNumber(activeCat.currentServing)"></span>
+                    <span class="text-[14rem] font-black tabular-nums tracking-tighter leading-none drop-shadow-lg text-gray-900" x-text="formatNumber(activeCat.currentServing)"></span>
                 </div>
 
                 <div class="bg-gray-200 py-6 flex justify-center items-center text-gray-700 font-semibold text-3xl border-t-2 border-gray-300 text-center">
@@ -47,14 +48,15 @@
         <!-- SIDEBAR (Other Categories) -->
         <div class="w-1/3 flex flex-col gap-6">
             <template x-for="cat in otherCats" :key="cat.id">
-                <div class="bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden border-4 flex-1 transition-all duration-500" :class="cat.color">
+                <div class="bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden border-4 flex-1 transition-all duration-500" :class="cat.borderClass">
                     
-                    <div class="py-3 text-center border-b border-gray-200" :class="'bg-' + cat.color.split('-')[1] + '-50'">
-                        <h2 class="text-2xl font-bold uppercase tracking-wide" x-text="cat.name"></h2>
+                    <div class="py-3 text-center border-b border-gray-200" :class="cat.bgLightClass">
+                        <!-- Uses the custom text color applied to the category -->
+                        <h2 class="text-2xl font-bold uppercase tracking-wide" :class="cat.textClass" x-text="cat.name"></h2>
                     </div>
                     
                     <div class="flex-1 flex items-center justify-center bg-gray-50">
-                        <span class="text-7xl font-black tabular-nums tracking-tighter" x-text="formatNumber(cat.currentServing)"></span>
+                        <span class="text-7xl font-black tabular-nums tracking-tighter text-gray-800" x-text="formatNumber(cat.currentServing)"></span>
                     </div>
 
                     <div class="bg-gray-200 py-2 flex justify-center items-center text-gray-700 font-semibold text-xl border-t-2 border-gray-300 text-center">
@@ -73,9 +75,8 @@ document.addEventListener('alpine:init', () => {
         categories: [],
         audioUnlocked: false,
         audioCtx: null,
-        activeCategoryId: 'regular', // Defaults to Regular on load
+        activeCategoryId: 'regular', 
 
-        // Getters dynamically split the active category from the rest
         get activeCat() {
             if (!this.categories.length) return null;
             return this.categories.find(c => c.id === this.activeCategoryId) || this.categories[0];
@@ -90,7 +91,7 @@ document.addEventListener('alpine:init', () => {
             
             if (savedQueue) {
                 let parsed = JSON.parse(savedQueue);
-                if (parsed.length > 0 && typeof parsed[0].skippedList === 'undefined') {
+                if (parsed.length > 0 && typeof parsed[0].borderClass === 'undefined') {
                     // Waiting for admin data format upgrade
                 } else {
                     this.categories = parsed;
@@ -126,12 +127,11 @@ document.addEventListener('alpine:init', () => {
                 if (this.categories[index] && this.categories[index].currentServing !== newCat.currentServing) {
                     if (newCat.currentServing !== 0) {
                         announcementText = `Now serving ${newCat.name}, number ${newCat.currentServing}`;
-                        newlyActiveId = newCat.id; // Mark this category as the newest called
+                        newlyActiveId = newCat.id; 
                     }
                 }
             });
 
-            // If a new number was called, swap it to the big main display
             if (newlyActiveId) {
                 this.activeCategoryId = newlyActiveId;
             }
