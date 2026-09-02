@@ -7,39 +7,63 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="bg-gray-900 h-screen flex flex-col" x-data="displayQueue()" @click="unlockAudio()">
+<body class="bg-gray-900 h-screen flex flex-col overflow-hidden" x-data="displayQueue()" @click="unlockAudio()">
 
-<div x-show="!audioUnlocked" class="bg-red-500 text-white text-sm text-center py-1 font-semibold">
+<div x-show="!audioUnlocked" class="bg-red-500 text-white text-sm text-center py-1 font-semibold z-50">
     Sound is paused. Click anywhere on this screen to enable the notification chime and voice.
 </div>
 
-<div class="flex-1 flex flex-col p-8">
-    <div class="text-center mb-8 mt-4">
-        <h1 class="text-5xl font-bold text-white tracking-wider uppercase">Now Serving</h1>
+<div class="flex-1 flex flex-col p-8" x-show="categories.length > 0" style="display: none;">
+    <div class="text-center mb-6">
+        <h1 class="text-4xl font-bold text-white tracking-wider uppercase">Now Serving</h1>
     </div>
 
-    <div class="grid grid-cols-2 gap-8 flex-1">
-        <template x-for="cat in categories" :key="cat.id">
-            <div class="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border-4" :class="cat.color">
+    <!-- Main Layout: 2/3 Left (Active), 1/3 Right (Others) -->
+    <div class="flex-1 flex gap-8">
+        
+        <!-- MAIN HIGHLIGHT (Recently Called) -->
+        <template x-if="activeCat">
+            <div class="w-2/3 bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-8 transition-colors duration-500" :class="activeCat.color">
                 
-                <div class="py-4 text-center border-b border-gray-200" :class="'bg-' + cat.color.split('-')[1] + '-50'">
-                    <h2 class="text-4xl font-bold uppercase tracking-wide" x-text="cat.name"></h2>
+                <div class="py-8 text-center border-b border-gray-200 transition-colors duration-500" :class="'bg-' + activeCat.color.split('-')[1] + '-50'">
+                    <span class="text-xl font-bold text-gray-500 uppercase tracking-widest block mb-2">Please Proceed To Claim</span>
+                    <h2 class="text-7xl font-black uppercase tracking-wide" x-text="activeCat.name"></h2>
                 </div>
                 
                 <div class="flex-1 flex items-center justify-center bg-gray-50 py-8">
-                    <span class="text-8xl font-black tabular-nums tracking-tighter" x-text="formatNumber(cat.currentServing)"></span>
+                    <!-- Massive Number Display -->
+                    <span class="text-[14rem] font-black tabular-nums tracking-tighter leading-none drop-shadow-lg" x-text="formatNumber(activeCat.currentServing)"></span>
                 </div>
 
-                <div class="bg-gray-200 py-3 px-6 flex justify-center items-center text-gray-700 font-semibold text-2xl border-t-2 border-gray-300 text-center">
+                <div class="bg-gray-200 py-6 flex justify-center items-center text-gray-700 font-semibold text-3xl border-t-2 border-gray-300 text-center">
                     <div>
-                        <span class="text-sm text-gray-500 uppercase tracking-wide block">Pending</span>
-                        <!-- Combined count of standard waiting + skipped people -->
-                        <span x-text="cat.waitingList.length + cat.skippedList.length"></span>
+                        <span class="text-lg text-gray-500 uppercase tracking-wide block">Pending in Queue</span>
+                        <span class="text-4xl font-bold" x-text="activeCat.waitingList.length + activeCat.skippedList.length"></span>
                     </div>
                 </div>
-
             </div>
         </template>
+
+        <!-- SIDEBAR (Other Categories) -->
+        <div class="w-1/3 flex flex-col gap-6">
+            <template x-for="cat in otherCats" :key="cat.id">
+                <div class="bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden border-4 flex-1 transition-all duration-500" :class="cat.color">
+                    
+                    <div class="py-3 text-center border-b border-gray-200" :class="'bg-' + cat.color.split('-')[1] + '-50'">
+                        <h2 class="text-2xl font-bold uppercase tracking-wide" x-text="cat.name"></h2>
+                    </div>
+                    
+                    <div class="flex-1 flex items-center justify-center bg-gray-50">
+                        <span class="text-7xl font-black tabular-nums tracking-tighter" x-text="formatNumber(cat.currentServing)"></span>
+                    </div>
+
+                    <div class="bg-gray-200 py-2 flex justify-center items-center text-gray-700 font-semibold text-xl border-t-2 border-gray-300 text-center">
+                        <span>Pending: <span x-text="cat.waitingList.length + cat.skippedList.length"></span></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
     </div>
 </div>
 
@@ -49,7 +73,17 @@ document.addEventListener('alpine:init', () => {
         categories: [],
         audioUnlocked: false,
         audioCtx: null,
-        maxNumber: 999, 
+        activeCategoryId: 'regular', // Defaults to Regular on load
+
+        // Getters dynamically split the active category from the rest
+        get activeCat() {
+            if (!this.categories.length) return null;
+            return this.categories.find(c => c.id === this.activeCategoryId) || this.categories[0];
+        },
+        get otherCats() {
+            if (!this.categories.length) return [];
+            return this.categories.filter(c => c.id !== this.activeCat.id);
+        },
 
         init() {
             const savedQueue = localStorage.getItem('ecc_queue_data');
@@ -57,7 +91,7 @@ document.addEventListener('alpine:init', () => {
             if (savedQueue) {
                 let parsed = JSON.parse(savedQueue);
                 if (parsed.length > 0 && typeof parsed[0].skippedList === 'undefined') {
-                    // Waiting for admin to overwrite data format
+                    // Waiting for admin data format upgrade
                 } else {
                     this.categories = parsed;
                 }
@@ -86,15 +120,21 @@ document.addEventListener('alpine:init', () => {
 
         checkForChangesAndAnnounce(newData) {
             let announcementText = null;
+            let newlyActiveId = null;
             
             newData.forEach((newCat, index) => {
                 if (this.categories[index] && this.categories[index].currentServing !== newCat.currentServing) {
-                    // Announce only if it changed to an actual number (not 0/skipped)
                     if (newCat.currentServing !== 0) {
                         announcementText = `Now serving ${newCat.name}, number ${newCat.currentServing}`;
+                        newlyActiveId = newCat.id; // Mark this category as the newest called
                     }
                 }
             });
+
+            // If a new number was called, swap it to the big main display
+            if (newlyActiveId) {
+                this.activeCategoryId = newlyActiveId;
+            }
 
             if (announcementText && this.audioUnlocked) {
                 this.playDing();
