@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,8 +32,9 @@
 
                 <div class="bg-gray-200 py-3 px-6 flex justify-center items-center text-gray-700 font-semibold text-2xl border-t-2 border-gray-300 text-center">
                     <div>
-                        <span class="text-sm text-gray-500 uppercase tracking-wide block">Waiting</span>
-                        <span x-text="cat.waitingList.length"></span>
+                        <span class="text-sm text-gray-500 uppercase tracking-wide block">Pending</span>
+                        <!-- Combined count of standard waiting + skipped people -->
+                        <span x-text="cat.waitingList.length + cat.skippedList.length"></span>
                     </div>
                 </div>
 
@@ -56,8 +56,8 @@ document.addEventListener('alpine:init', () => {
             
             if (savedQueue) {
                 let parsed = JSON.parse(savedQueue);
-                if (parsed.length > 0 && typeof parsed[0].waitingList === 'undefined') {
-                    // Waiting for admin to overwrite data
+                if (parsed.length > 0 && typeof parsed[0].skippedList === 'undefined') {
+                    // Waiting for admin to overwrite data format
                 } else {
                     this.categories = parsed;
                 }
@@ -76,7 +76,6 @@ document.addEventListener('alpine:init', () => {
             if (this.audioUnlocked) return; 
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
-            // Unlock speech synthesis as well by speaking a silent utterance
             if ('speechSynthesis' in window) {
                 let silentUtterance = new SpeechSynthesisUtterance('');
                 window.speechSynthesis.speak(silentUtterance);
@@ -90,7 +89,7 @@ document.addEventListener('alpine:init', () => {
             
             newData.forEach((newCat, index) => {
                 if (this.categories[index] && this.categories[index].currentServing !== newCat.currentServing) {
-                    // Only announce if a number was actually called (not just reset to 0)
+                    // Announce only if it changed to an actual number (not 0/skipped)
                     if (newCat.currentServing !== 0) {
                         announcementText = `Now serving ${newCat.name}, number ${newCat.currentServing}`;
                     }
@@ -100,7 +99,6 @@ document.addEventListener('alpine:init', () => {
             if (announcementText && this.audioUnlocked) {
                 this.playDing();
                 
-                // Wait 600ms for the ding to finish before speaking
                 setTimeout(() => {
                     this.speakAnnouncement(announcementText);
                 }, 600);
@@ -127,15 +125,10 @@ document.addEventListener('alpine:init', () => {
 
         speakAnnouncement(text) {
             if ('speechSynthesis' in window) {
-                // Cancel any currently playing speech to avoid overlapping
                 window.speechSynthesis.cancel();
-                
                 const utterance = new SpeechSynthesisUtterance(text);
-                
-                // Adjusting rate for better clarity (1.0 is default, 0.85 is a bit slower)
                 utterance.rate = 0.85; 
                 utterance.pitch = 1;
-                
                 window.speechSynthesis.speak(utterance);
             }
         },
