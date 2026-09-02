@@ -23,15 +23,24 @@
             <h2 class="text-xl font-semibold mb-4">Issue Ticket</h2>
             <div class="grid grid-cols-2 gap-4">
                 <template x-for="cat in categories" :key="cat.id">
-                    <button @click="issueTicket(cat.id)" 
-                            class="p-4 border-2 rounded-lg font-medium hover:bg-gray-50 transition flex flex-col items-center justify-center"
-                            :class="cat.color">
-                        <span class="text-lg tracking-wide" x-text="cat.name"></span>
-                        <div class="mt-2 flex flex-col items-center">
-                            <span class="text-xs text-gray-500 uppercase tracking-wider">Last Issued</span>
-                            <span class="text-3xl font-black tabular-nums mt-1" x-text="formatNumber(cat.latestIssued)"></span>
+                    <div class="border-2 rounded-lg p-3 flex flex-col justify-between" :class="cat.color">
+                        <!-- Standard Auto-Issue -->
+                        <button @click="issueTicket(cat.id)" class="flex flex-col items-center justify-center hover:bg-gray-50 transition w-full mb-3 pb-3 border-b">
+                            <span class="text-lg tracking-wide font-medium" x-text="cat.name"></span>
+                            <div class="mt-2 flex flex-col items-center">
+                                <span class="text-xs text-gray-500 uppercase tracking-wider">Last Issued</span>
+                                <span class="text-3xl font-black tabular-nums mt-1" x-text="formatNumber(cat.latestIssued)"></span>
+                            </div>
+                        </button>
+                        
+                        <!-- Manual Injection -->
+                        <div class="flex items-center justify-between" x-data="{ num: '' }">
+                            <input type="number" x-model="num" class="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-gray-800 focus:outline-none focus:border-blue-500" placeholder="No.">
+                            <button @click="if(num){ issueManual(cat.id, parseInt(num)); num=''; }" class="bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs font-bold hover:bg-gray-300 transition">
+                                + Add
+                            </button>
                         </div>
-                    </button>
+                    </div>
                 </template>
             </div>
         </div>
@@ -48,32 +57,52 @@
                             <div class="flex flex-col gap-1">
                                 <div class="flex items-center gap-2">
                                     <span class="font-medium text-gray-700 uppercase" x-text="cat.name"></span>
-                                    <!-- Individual Category Reset Button -->
                                     <button @click="resetCategory(cat.id)" class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded hover:bg-red-200 transition font-bold uppercase tracking-wider">
                                         Reset
                                     </button>
                                 </div>
                                 <span class="text-xs text-gray-500">Serving: <span class="font-bold text-black text-sm" x-text="formatNumber(cat.currentServing)"></span></span>
                             </div>
-                            <button @click="callNext(cat.id)" 
-                                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-semibold shadow">
-                                Call Next
-                            </button>
+                            <div class="flex gap-2">
+                                <button x-show="cat.currentServing > 0" @click="skipCurrent(cat.id)" 
+                                        class="bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 text-xs font-semibold shadow transition">
+                                    Skip
+                                </button>
+                                <button @click="callNext(cat.id)" 
+                                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-semibold shadow transition">
+                                    Call Next
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Bottom Row: The Waiting Pool (Chips) -->
-                        <div class="flex flex-col gap-1">
-                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Waiting List (<span x-text="cat.waitingList.length"></span>)</span>
-                            <div class="flex flex-wrap gap-2">
-                                <span x-show="cat.waitingList.length === 0" class="text-sm text-gray-400 italic">Queue is empty</span>
-                                <template x-for="num in cat.waitingList" :key="num">
-                                    <button @click="callSpecificNumber(cat.id, num)" 
-                                            class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-blue-500 hover:text-white transition font-semibold text-sm shadow-sm"
-                                            title="Click to call out of order"
-                                            x-text="num">
-                                    </button>
-                                </template>
+                        <!-- Bottom Row: The Waiting Pool & Skipped Pool -->
+                        <div class="flex flex-col gap-3">
+                            
+                            <!-- Normal Waiting -->
+                            <div class="flex flex-col gap-1">
+                                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Waiting List (<span x-text="cat.waitingList.length"></span>)</span>
+                                <div class="flex flex-wrap gap-2">
+                                    <span x-show="cat.waitingList.length === 0" class="text-sm text-gray-400 italic">Queue is empty</span>
+                                    <template x-for="num in cat.waitingList" :key="'w-'+num">
+                                        <button @click="callSpecificNumber(cat.id, num)" 
+                                                class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-blue-500 hover:text-white transition font-semibold text-sm shadow-sm"
+                                                title="Call out of order" x-text="num"></button>
+                                    </template>
+                                </div>
                             </div>
+
+                            <!-- Skipped / Recall (Only shows if there are skipped numbers) -->
+                            <div class="flex flex-col gap-1 pt-2 border-t border-red-100" x-show="cat.skippedList.length > 0">
+                                <span class="text-[10px] font-bold text-red-500 uppercase tracking-wide">Skipped / Recall</span>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="num in cat.skippedList" :key="'s-'+num">
+                                        <button @click="callSkipped(cat.id, num)" 
+                                                class="px-3 py-1 bg-red-50 border border-red-300 text-red-700 rounded hover:bg-red-500 hover:text-white transition font-semibold text-sm shadow-sm"
+                                                title="Recall skipped number" x-text="num"></button>
+                                    </template>
+                                </div>
+                            </div>
+
                         </div>
 
                     </div>
@@ -97,7 +126,8 @@ document.addEventListener('alpine:init', () => {
             let isOldFormat = false;
             if (savedQueue) {
                 let parsed = JSON.parse(savedQueue);
-                if (parsed.length > 0 && typeof parsed[0].waitingList === 'undefined') isOldFormat = true;
+                // Check if the new 'skippedList' array exists in stored data
+                if (parsed.length > 0 && typeof parsed[0].skippedList === 'undefined') isOldFormat = true;
             }
 
             if (storedDate !== today || isOldFormat) {
@@ -120,10 +150,10 @@ document.addEventListener('alpine:init', () => {
 
         resetToDefaults() {
             this.categories = [
-                { id: 'regular', name: 'Regular', prefix: 'R', color: 'border-blue-500 text-blue-700', currentServing: 0, latestIssued: 0, waitingList: [] },
-                { id: 'priority', name: 'Priority', prefix: 'P', color: 'border-red-500 text-red-700', currentServing: 0, latestIssued: 0, waitingList: [] },
-                { id: 'pickup', name: 'Pickup', prefix: 'U', color: 'border-green-500 text-green-700', currentServing: 0, latestIssued: 0, waitingList: [] },
-                { id: 'multiple', name: 'Multiple', prefix: 'M', color: 'border-purple-500 text-purple-700', currentServing: 0, latestIssued: 0, waitingList: [] }
+                { id: 'regular', name: 'Regular', prefix: 'R', color: 'border-blue-500 text-blue-700', currentServing: 0, latestIssued: 0, waitingList: [], skippedList: [] },
+                { id: 'priority', name: 'Priority', prefix: 'P', color: 'border-red-500 text-red-700', currentServing: 0, latestIssued: 0, waitingList: [], skippedList: [] },
+                { id: 'pickup', name: 'Pickup', prefix: 'U', color: 'border-green-500 text-green-700', currentServing: 0, latestIssued: 0, waitingList: [], skippedList: [] },
+                { id: 'multiple', name: 'Multiple', prefix: 'M', color: 'border-purple-500 text-purple-700', currentServing: 0, latestIssued: 0, waitingList: [], skippedList: [] }
             ];
             this.saveState();
         },
@@ -133,6 +163,25 @@ document.addEventListener('alpine:init', () => {
             cat.latestIssued = cat.latestIssued >= this.maxNumber ? 1 : cat.latestIssued + 1;
             cat.waitingList.push(cat.latestIssued); 
             this.saveState(); 
+        },
+
+        issueManual(catId, num) {
+            if (!num || num <= 0) return;
+            let cat = this.categories.find(c => c.id === catId);
+            
+            // Prevent duplicates in queue
+            if (!cat.waitingList.includes(num) && !cat.skippedList.includes(num) && cat.currentServing !== num) {
+                cat.waitingList.push(num);
+                cat.waitingList.sort((a,b) => a - b); // Keep chips ordered
+                
+                // If they injected a number higher than the current tracker, bump the tracker up
+                if (num > cat.latestIssued && num <= this.maxNumber) {
+                    cat.latestIssued = num;
+                }
+                this.saveState();
+            } else {
+                alert('That number is already in the queue or currently serving.');
+            }
         },
 
         callNext(id) {
@@ -155,17 +204,38 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        skipCurrent(catId) {
+            let cat = this.categories.find(c => c.id === catId);
+            if (cat.currentServing > 0) {
+                // Move current to skipped list
+                if (!cat.skippedList.includes(cat.currentServing)) {
+                    cat.skippedList.push(cat.currentServing);
+                }
+                cat.currentServing = 0; // Clear the board
+                this.saveState();
+            }
+        },
+
+        callSkipped(catId, num) {
+            if(confirm(`Recall skipped number ${num}?`)) {
+                let cat = this.categories.find(c => c.id === catId);
+                cat.skippedList = cat.skippedList.filter(n => n !== num);
+                cat.currentServing = num;
+                this.saveState();
+            }
+        },
+
         resetQueue() {
             if(confirm('Reset all queues to 0?')) this.resetToDefaults();
         },
 
-        // New function to reset only a specific category
         resetCategory(catId) {
             let cat = this.categories.find(c => c.id === catId);
             if(confirm(`Are you sure you want to reset the ${cat.name} queue to 0?`)) {
                 cat.currentServing = 0;
                 cat.latestIssued = 0;
                 cat.waitingList = [];
+                cat.skippedList = [];
                 this.saveState();
             }
         },
