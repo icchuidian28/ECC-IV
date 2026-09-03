@@ -190,11 +190,20 @@ document.addEventListener('alpine:init', () => {
 
         speakAnnouncement(text) {
             if ('speechSynthesis' in window) {
+                // Cancel any currently speaking audio so it doesn't overlap
                 window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate = 0.85; 
-                utterance.pitch = 1;
-                window.speechSynthesis.speak(utterance);
+                
+                // Create the first announcement
+                const utterance1 = new SpeechSynthesisUtterance(text);
+                utterance1.rate = 0.85; 
+                utterance1.pitch = 1;
+                window.speechSynthesis.speak(utterance1);
+
+                // Create the second announcement (it will automatically queue and wait for the first to finish)
+                const utterance2 = new SpeechSynthesisUtterance(text);
+                utterance2.rate = 0.85; 
+                utterance2.pitch = 1;
+                window.speechSynthesis.speak(utterance2);
             }
         },
 
