@@ -26,7 +26,7 @@
             <div class="w-2/3 bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-8 transition-colors duration-500" :class="activeCat.borderClass">
                 
                 <div class="py-8 text-center border-b border-gray-200 transition-colors duration-500" :class="activeCat.bgLightClass">
-                    <span class="text-xl font-bold text-gray-500 uppercase tracking-widest block mb-2">Please Proceed To Claim</span>
+                    <span class="text-xl font-bold text-gray-500 uppercase tracking-widest block mb-2">Please Proceed To The Window</span>
                     <!-- Uses the custom text color applied to the category -->
                     <h2 class="text-7xl font-black uppercase tracking-wide" :class="activeCat.textClass" x-text="activeCat.name"></h2>
                 </div>
@@ -126,7 +126,7 @@ document.addEventListener('alpine:init', () => {
             newData.forEach((newCat, index) => {
                 if (this.categories[index] && this.categories[index].currentServing !== newCat.currentServing) {
                     if (newCat.currentServing !== 0) {
-                        announcementText = `Now serving ${newCat.name}, number ${newCat.currentServing}`;
+                        announcementText = `Now assisting ${newCat.name}, number ${newCat.currentServing}`;
                         newlyActiveId = newCat.id; 
                     }
                 }
