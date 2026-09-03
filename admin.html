@@ -227,28 +227,34 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // UPDATED: Adjusts `latestIssued` down by 1 if the very last number issued is deleted
+        // UPDATED LOGIC: Finds the actual highest number left in the queue and drops back to it
         removeWaiting(catId, num) {
             if(confirm(`Remove number ${num} completely from the waiting list?`)) {
                 let cat = this.categories.find(c => c.id === catId);
                 cat.waitingList = cat.waitingList.filter(n => n !== num);
                 
                 if (num === cat.latestIssued) {
-                    cat.latestIssued = Math.max(0, cat.latestIssued - 1);
+                    let maxW = cat.waitingList.length > 0 ? Math.max(...cat.waitingList) : 0;
+                    let maxS = cat.skippedList.length > 0 ? Math.max(...cat.skippedList) : 0;
+                    let curr = cat.currentServing || 0;
+                    cat.latestIssued = Math.max(maxW, maxS, curr);
                 }
                 
                 this.saveState();
             }
         },
 
-        // UPDATED: Adjusts `latestIssued` down by 1 if the very last number issued is deleted
+        // UPDATED LOGIC: Finds the actual highest number left in the queue and drops back to it
         removeSkipped(catId, num) {
             if(confirm(`Remove number ${num} completely from the skipped list?`)) {
                 let cat = this.categories.find(c => c.id === catId);
                 cat.skippedList = cat.skippedList.filter(n => n !== num);
                 
                 if (num === cat.latestIssued) {
-                    cat.latestIssued = Math.max(0, cat.latestIssued - 1);
+                    let maxW = cat.waitingList.length > 0 ? Math.max(...cat.waitingList) : 0;
+                    let maxS = cat.skippedList.length > 0 ? Math.max(...cat.skippedList) : 0;
+                    let curr = cat.currentServing || 0;
+                    cat.latestIssued = Math.max(maxW, maxS, curr);
                 }
 
                 this.saveState();
