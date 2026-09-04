@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Now Serving - ECC IV</title>
+    <title>Now Serving - Sandiganbayan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
@@ -101,6 +101,7 @@ document.addEventListener('alpine:init', () => {
         audioUnlocked: false,
         audioCtx: null,
         activeCategoryId: 'regular', 
+        voices: [], // Store loaded voices
 
         get activeCat() {
             if (!this.categories.length) return null;
@@ -121,6 +122,14 @@ document.addEventListener('alpine:init', () => {
                 } else {
                     this.categories = parsed;
                 }
+            }
+
+            // Load available voices as soon as possible
+            if ('speechSynthesis' in window) {
+                this.voices = window.speechSynthesis.getVoices();
+                window.speechSynthesis.onvoiceschanged = () => {
+                    this.voices = window.speechSynthesis.getVoices();
+                };
             }
 
             window.addEventListener('storage', (e) => {
@@ -190,19 +199,33 @@ document.addEventListener('alpine:init', () => {
 
         speakAnnouncement(text) {
             if ('speechSynthesis' in window) {
-                // Cancel any currently speaking audio so it doesn't overlap
                 window.speechSynthesis.cancel();
                 
-                // Create the first announcement
                 const utterance1 = new SpeechSynthesisUtterance(text);
-                utterance1.rate = 0.85; 
-                utterance1.pitch = 1;
-                window.speechSynthesis.speak(utterance1);
-
-                // Create the second announcement (it will automatically queue and wait for the first to finish)
                 const utterance2 = new SpeechSynthesisUtterance(text);
+
+                // Search for a female voice
+                let femaleVoice = this.voices.find(v => 
+                    v.name.includes('Female') || 
+                    v.name.includes('Samantha') || // macOS
+                    v.name.includes('Zira') ||     // Windows
+                    v.name.includes('Susan') || 
+                    v.name.includes('Tessa') ||
+                    v.name.includes('Google US English')
+                );
+
+                if (femaleVoice) {
+                    utterance1.voice = femaleVoice;
+                    utterance2.voice = femaleVoice;
+                }
+
+                // Adjust rate and pitch for a softer, more feminine tone
+                utterance1.rate = 0.85; 
+                utterance1.pitch = 1.2; 
                 utterance2.rate = 0.85; 
-                utterance2.pitch = 1;
+                utterance2.pitch = 1.2;
+
+                window.speechSynthesis.speak(utterance1);
                 window.speechSynthesis.speak(utterance2);
             }
         },
